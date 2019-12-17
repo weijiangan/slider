@@ -45,13 +45,16 @@ class Slider extends React.Component {
   }
 
   componentDidUpdate(prevProps, prevState) {
-    if (!('value' in this.props || 'min' in this.props || 'max' in this.props)) {
+    this.direction = this.state.value - prevState.value;
+    this.prevValue = prevProps.value;
+
+    if (this.state.dragging || !('value' in this.props || 'min' in this.props || 'max' in this.props)) {
       return;
     }
     const { value, onChange } = this.props;
     const theValue = value !== undefined ? value : prevState.value;
     const nextValue = this.trimAlignValue(theValue, this.props);
-    if (nextValue !== prevState.value) {
+    if (nextValue !== prevState.value || prevState.dragging) {
       // eslint-disable-next-line
       this.setState({ value: nextValue });
       if (utils.isValueOutOfRange(theValue, this.props)) {
@@ -60,16 +63,26 @@ class Slider extends React.Component {
     }
   }
 
-  onChange(state) {
+  onChange(state, runOnChange = !this.state.dragging) {
     const props = this.props;
     const isNotControlled = !('value' in props);
     const nextState = state.value > this.props.max ? {...state, value: this.props.max} : state;
-    if (isNotControlled) {
+    if (isNotControlled || this.state.dragging) {
       this.setState(nextState);
     }
 
-    const changedValue = nextState.value;
-    props.onChange(changedValue);
+    if (this.state.dragging && this.prevValue > -1) {
+      const nearestPoint = this.trimAlignValue(state.value)
+      if ((this.direction > 0 && nearestPoint > this.prevValue) ||
+        (this.direction < 0 && nearestPoint < this.prevValue)) {
+        props.onChange(nearestPoint)
+      }
+    }
+
+    if (runOnChange) {
+      const changedValue = nextState.value;
+      props.onChange(changedValue);
+    }
   }
 
   onStart(position) {
@@ -89,11 +102,15 @@ class Slider extends React.Component {
     this.onChange({ value });
   }
 
-  onEnd = (force) => {
+  onEnd = (force, position) => {
     const { dragging } = this.state;
     this.removeDocumentEvents();
     if (dragging || force) {
       this.props.onAfterChange(this.getValue());
+    }
+    if (position) {
+      const value = this.calcValueByPos(position);
+      this.onChange({ value }, true);
     }
     this.setState({ dragging: false });
   }
@@ -101,7 +118,7 @@ class Slider extends React.Component {
   onMove(e, position) {
     utils.pauseEvent(e);
     const { value: oldValue } = this.state;
-    const value = this.calcValueByPos(position);
+    const value = this.calcValueByPos(position, 1);
     if (value === oldValue) return;
 
     this.onChange({ value });

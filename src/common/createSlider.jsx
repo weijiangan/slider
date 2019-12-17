@@ -174,6 +174,11 @@ export default function createSlider(Component) {
       this.onMove(e, position - this.dragOffset);
     }
 
+    onMouseMoveEnd = (e) => {
+      const position = utils.getMousePosition(this.props.vertical, e);
+      this.onEnd(e, position - this.dragOffset);
+    }
+
     onTouchMove = (e) => {
       if (utils.isNotTouchEvent(e) || !this.sliderRef) {
         this.onEnd();
@@ -224,7 +229,7 @@ export default function createSlider(Component) {
 
     addDocumentMouseEvents() {
       this.onMouseMoveListener = addEventListener(this.document, 'mousemove', this.onMouseMove);
-      this.onMouseUpListener = addEventListener(this.document, 'mouseup', this.onEnd);
+      this.onMouseUpListener = addEventListener(this.document, 'mouseup', this.onMouseMoveEnd);
     }
 
     removeDocumentEvents() {
@@ -260,10 +265,11 @@ export default function createSlider(Component) {
       return value;
     }
 
-    calcValueByPos(position) {
+    calcValueByPos(position, stepOverride) {
       const sign = this.props.reverse ? -1 : +1;
       const pixelOffset = sign * (position - this.getSliderStart());
-      const nextValue = this.trimAlignValue(this.calcValue(pixelOffset));
+      const nextProps = typeof stepOverride !== "undefined" ? { step: stepOverride } : undefined;
+      const nextValue = this.trimAlignValue(this.calcValue(pixelOffset), nextProps);
       return nextValue;
     }
 
@@ -315,7 +321,7 @@ export default function createSlider(Component) {
           className={sliderClassName}
           onTouchStart={disabled ? noop : this.onTouchStart}
           onMouseDown={disabled ? noop : this.onMouseDown}
-          onMouseUp={disabled ? noop : this.onMouseUp}
+          onMouseUp={disabled ? noop : noop}
           onKeyDown={disabled ? noop : this.onKeyDown}
           onFocus={disabled ? noop : this.onFocus}
           onBlur={disabled ? noop : this.onBlur}
