@@ -106,6 +106,7 @@ export default function createSlider(Component) {
 
     onMouseDown = (e) => {
       if (e.button !== 0) { return; }
+      utils.pauseEvent(e);
 
       const isVertical = this.props.vertical;
       let position = utils.getMousePosition(isVertical, e);
